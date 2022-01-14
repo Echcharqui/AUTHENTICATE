@@ -1,0 +1,18 @@
+{
+  "name": "AUTHENTICATE",
+  "version": "1.0.0",
+  "description": "this an auth system basic node js express and mongodb for many auth strategy to an api as : [ email/password - oAuth ... ]",
+  "main": "api.js",
+  "repository": "https://github.com/Echcharqui/AUTHENTICATE.git",
+  "author": "Echcharqui hamza <echcharqui@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "dotenv": "^11.0.0",
+    "express": "^4.17.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
+}
