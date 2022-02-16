@@ -7,12 +7,26 @@
   "author": "Echcharqui hamza <echcharqui@gmail.com>",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "start": "node ./src/api.js",
+    "dev": "npx nodemon",
+    "eslint:report": "eslint src --ext .js",
+    "eslint:fix": "eslint --fix src --ext .js"
+  },
   "dependencies": {
+    "colors": "^1.4.0",
+    "cors": "^2.8.5",
     "dotenv": "^11.0.0",
+    "eslint-config-standard": "^16.0.3",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
     "express": "^4.17.2",
+    "mongoose": "^6.1.6",
     "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "eslint": "^7.12.1",
     "nodemon": "^2.0.15"
   }
 }
