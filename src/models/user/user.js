@@ -17,6 +17,15 @@ const userSchema = mongoose.Schema({
     type: String,
     required: true
   },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other'],
+    required: true
+  },
+  bornDate: {
+    type: Date,
+    required: true
+  },
   isNewUser: {
     type: Boolean,
     default: true

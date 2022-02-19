@@ -18,8 +18,6 @@ const { DBConnection } = require('./src/database/connect')
 DBConnection()
 //////////////////////////////////////////////////////////
 
-
-
 //////////         cros-origin config         ////////////
 let whitelist = [`${process.env.CLIENT_URL}`]
 let corsOptions = {
@@ -54,16 +52,19 @@ app.use('/api/auth/', AuthRoute)
 
 const port = process.env.PORT
 
+////////           error handling            /////////////                      
 app.use((req, res, next) => {
     const error = new Error("not found")
     error.status(404)
     next(error)
 })
-
 app.use((error, req, res, next) => {
-    res.status(error.status || 500).json(error)
+    return res.status(error.status || 500).json({ error: error })
 })
+//////////////////////////////////////////////////////////
 
+//////////////// server running  /////////////////////////
 app.listen(port, "0.0.0.0", () => {
     console.log(`\t-API start and runing on port ${port} : ☑️`.cyan.bold)
 });
+//////////////////////////////////////////////////////////
