@@ -37,19 +37,17 @@ const userSchema = mongoose.Schema({
   },
   acountIsBanned: {
     type: Boolean,
-    required: true,
     default: false
   },
   acountBanedUntil: {
     type: Date,
-    required: true,
     default: null
   },
   refreshToken: {
     type: String,
     default: ''
   },
-  acountConfirmationToken: {
+  acountValidationToken: {
     type: String,
     default: ''
   },
