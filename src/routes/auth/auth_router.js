@@ -93,9 +93,12 @@ router.post('/signUp', rateLimiter, signUpValidator(), async (req, res) => {
     await newUser.save()
 
     return res.status(201).json('Thanks for signing up. check your email to complete your registration !')
+
   } catch (error) {
+
     console.log(error)
     return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+
   }
 })
 
