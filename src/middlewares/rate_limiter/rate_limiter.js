@@ -1,6 +1,6 @@
 const rateLimit = require('express-rate-limit')
 
-const rate_limiter_4_on_1 = rateLimit({
+const rateLimiter4on1 = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 4, // Limit each IP to 4 requests per `window` (here, per 1 minute)
   // message: 'You have sent too many requests in a given amount of time, please try again later',
@@ -11,4 +11,4 @@ const rate_limiter_4_on_1 = rateLimit({
   legacyHeaders: false // Disable the `X-RateLimit-*` headers
 })
 
-module.exports = { rate_limiter_4_on_1 }
+module.exports = { rateLimiter4on1 }

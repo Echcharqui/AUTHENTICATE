@@ -9,7 +9,7 @@ const { generateAcountValidationToken } = require('../../custom_modules')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// midlewares /////////////////////////
-const { rate_limiter_4_on_1, isTheAcountValidationTokenValid } = require('../../middlewares')
+const { rateLimiter4on1, isTheAcountValidationTokenValid } = require('../../middlewares')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// validators /////////////////////////
@@ -21,12 +21,12 @@ const { User, BlackListToken } = require('../../models')
 /// ////////////////////////////////////////////////////
 
 // sign in route
-router.get('/signIn', rate_limiter_4_on_1, async (req, res) => {
+router.get('/signIn', rateLimiter4on1, async (req, res) => {
   return res.status(200).json({ message: 'welcom to the sign in !' })
 })
 
 // sign up route
-router.post('/signUp', rate_limiter_4_on_1, signUpValidator(), async (req, res) => {
+router.post('/signUp', rateLimiter4on1, signUpValidator(), async (req, res) => {
   // check validation inputs
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -96,12 +96,9 @@ router.post('/signUp', rate_limiter_4_on_1, signUpValidator(), async (req, res) 
     await newUser.save()
 
     return res.status(201).json('Thanks for signing up 🙏. check your email to complete your registration !')
-
   } catch (error) {
-
     console.log(error)
     return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
-
   }
 })
 
@@ -110,36 +107,31 @@ router.post('/acount_validation', isTheAcountValidationTokenValid, async (req, r
   // find the acount
   let theAcount = await User.findOne({ email: req.user.email })
 
-  // if this acount dont exit  
+  // if this acount dont exit
   if (!theAcount) {
     return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
   }
 
   // check if the account not validated yet so start the acount validation process
   if (!theAcount.acountValidated) {
-
     try {
       // black listing the token
       await BlackListToken.insertMany([{
         token: theAcount.acountValidationToken
       }])
 
-      // update the acount to become a validated one 
-      theAcount = await User.findOneAndUpdate({ email: req.user.email }, { acountValidated: true, acountValidationToken: "", }, { new: true })
+      // update the acount to become a validated one
+      theAcount = await User.findOneAndUpdate({ email: req.user.email }, { acountValidated: true, acountValidationToken: '' }, { new: true })
 
-      return res.status(201).json("Thanks for choosing us 🙏, your account has been validated successfully. you can login now 👍")
-
+      return res.status(201).json('Thanks for choosing us 🙏, your account has been validated successfully. you can login now 👍')
     } catch (error) {
-      console.log(error);
+      console.log(error)
       return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
     }
-
-  }
-  // check if the account is already validated return a response with status 409 which mean that this request is no longer required
-  else {
+  } else {
+    // check if the account is already validated return a response with status 409 which mean that this request is no longer required
     return res.status(409).json({ errors: { message: 'This account is already validated ! please try to loging now.' } })
   }
-
 })
 
 // forgetPassword route
