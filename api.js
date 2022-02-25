@@ -64,7 +64,7 @@ app.use((error, req, res, next) => {
 //////////////////////////////////////////////////////////
 
 //////////////// server running  /////////////////////////
-app.listen(port, "0.0.0.0", () => {
-    console.log(`\t-API start and runing on port ${port} : ☑️`.cyan.bold)
+app.listen(port || 8080, "0.0.0.0", () => {
+    console.log(`\t-API start and runing on port ${port || 8080} : ☑️`.cyan.bold)
 });
 //////////////////////////////////////////////////////////

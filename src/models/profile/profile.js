@@ -26,6 +26,14 @@ const profileSchema = mongoose.Schema({
   bornDate: {
     type: Date,
     required: true
+  },
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
+  lastConection: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
