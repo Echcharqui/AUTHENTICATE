@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs')
 const { validationResult } = require('express-validator')
 
 /// /////////////// custom modules /////////////////////////
-const { generateAcountValidationToken, emailHider } = require('../../custom_modules')
+const { generateAcountValidationToken, generateResetPasswordToken, emailHider } = require('../../custom_modules')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// midlewares /////////////////////////
@@ -13,7 +13,7 @@ const { rateLimiter4on1, rateLimiter1on1, isTheAcountValidationTokenValid } = re
 /// ////////////////////////////////////////////////////
 
 /// /////////////// validators /////////////////////////
-const { signUpValidator, resendEmailValidator } = require('../../validators')
+const { signUpValidator, resendEmailValidator, forgetPassword } = require('../../validators')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// DB models /////////////////////////
@@ -145,9 +145,16 @@ router.post('/resend_account_validation_email', rateLimiter1on1, resendEmailVali
   // find the acount
   let theAcount = await User.findOne({ email: req.body.email })
 
-  // if this acount dont exit
+  // if this acount exit
   if (!theAcount) {
-    return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+    return res.status(400).json({
+      errors: {
+        value: `${req.body.email}`,
+        msg: 'There is no account registered with this email address !',
+        param: 'email',
+        location: 'body'
+      }
+    })
   }
 
   // check if the account not validated yet so start the acount validation process
@@ -161,7 +168,7 @@ router.post('/resend_account_validation_email', rateLimiter1on1, resendEmailVali
       // generate a new token
       const theNewToken = await generateAcountValidationToken(req.body)
 
-      // update the acount to become a validated one
+      // update the acount by updating the acountValidationToken field of this acount
       theAcount = await User.findOneAndUpdate({ email: req.body.email }, { acountValidationToken: theNewToken }, { new: true })
 
       // send the new email
@@ -170,7 +177,7 @@ router.post('/resend_account_validation_email', rateLimiter1on1, resendEmailVali
       // hide email
       const hidingEmail = await emailHider(`${req.body.email}`)
 
-      return res.status(201).json(`A new account email validation has been sent 📨 to the adresse : ${hidingEmail} !`)
+      return res.status(201).json(`A new account email validation has been sent 📨 to the email adresse : ${hidingEmail} !`)
     } catch (error) {
       console.log(error)
       return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
@@ -182,8 +189,60 @@ router.post('/resend_account_validation_email', rateLimiter1on1, resendEmailVali
 })
 
 // forgetPassword route
-router.get('/forgetPassword', async (req, res) => {
-  return res.status(200).json({ message: 'welcom to the forgetPassword !' })
+router.post('/forget_password', rateLimiter1on1, forgetPassword(), async (req, res) => {
+  // check validation inputs
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() })
+  }
+
+  // find the acount
+  let theAcount = await User.findOne({ email: req.body.email })
+
+  // if this acount exit
+  if (!theAcount) {
+    return res.status(400).json({
+      errors: {
+        value: `${req.body.email}`,
+        msg: 'There is no account registered with this email address !',
+        param: 'email',
+        location: 'body'
+      }
+    })
+  }
+
+  // check if the account not validated yet so start the acount validation process
+  if (theAcount.acountValidated) {
+    try {
+      // check if the user alredy sent a similar request by checking the resetPasswordToken field in the of this acount
+      if (theAcount.resetPasswordToken.lenghth > 0) {
+        // black listing the token
+        await BlackListToken.insertMany([{
+          token: theAcount.resetPasswordToken
+        }])
+      }
+
+      // generate a new token
+      const theNewToken = await generateResetPasswordToken(req.body)
+
+      // update the acount by updating the resetPasswordToken field of this account
+      theAcount = await User.findOneAndUpdate({ email: req.body.email }, { resetPasswordToken: theNewToken }, { new: true })
+
+      // send the new email
+      console.log('new reset password email is sent successfully')
+
+      // hide email
+      const hidingEmail = await emailHider(`${req.body.email}`)
+
+      return res.status(201).json(`A new reset password email has been sent 📨 to the email adresse : ${hidingEmail} !`)
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+    }
+  } else {
+    // check if the account is already validated return a response with status 403 which mean that this request required a validated token
+    return res.status(403).json({ errors: { message: 'This request requires a validated account which is not your case ! please validate your account first !' } })
+  }
 })
 
 // log out route
