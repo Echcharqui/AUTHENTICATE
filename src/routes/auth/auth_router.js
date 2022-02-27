@@ -5,18 +5,18 @@ const bcrypt = require('bcryptjs')
 const { validationResult } = require('express-validator')
 
 /// /////////////// custom modules /////////////////////////
-const { generateAcountValidationToken } = require('../../custom_modules')
+const { generateAcountValidationToken, emailHider } = require('../../custom_modules')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// midlewares /////////////////////////
-const { rateLimiter4on1, isTheAcountValidationTokenValid } = require('../../middlewares')
+const { rateLimiter4on1, rateLimiter1on1, isTheAcountValidationTokenValid } = require('../../middlewares')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// validators /////////////////////////
-const { signUpValidator } = require('../../validators')
+const { signUpValidator, resendEmailValidator } = require('../../validators')
 /// ////////////////////////////////////////////////////
 
-/// /////////////// validators /////////////////////////
+/// /////////////// DB models /////////////////////////
 const { User, BlackListToken } = require('../../models')
 /// ////////////////////////////////////////////////////
 
@@ -124,6 +124,53 @@ router.post('/acount_validation', isTheAcountValidationTokenValid, async (req, r
       theAcount = await User.findOneAndUpdate({ email: req.user.email }, { acountValidated: true, acountValidationToken: '' }, { new: true })
 
       return res.status(201).json('Thanks for choosing us 🙏, your account has been validated successfully. you can login now 👍')
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+    }
+  } else {
+    // check if the account is already validated return a response with status 409 which mean that this request is no longer required
+    return res.status(409).json({ errors: { message: 'This account is already validated ! please try to loging now.' } })
+  }
+})
+
+// resend_acount_validation_email
+router.post('/resend_account_validation_email', rateLimiter1on1, resendEmailValidator(), async (req, res) => {
+  // check validation inputs
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() })
+  }
+
+  // find the acount
+  let theAcount = await User.findOne({ email: req.body.email })
+
+  // if this acount dont exit
+  if (!theAcount) {
+    return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+  }
+
+  // check if the account not validated yet so start the acount validation process
+  if (!theAcount.acountValidated) {
+    try {
+      // black listing the token
+      await BlackListToken.insertMany([{
+        token: theAcount.acountValidationToken
+      }])
+
+      // generate a new token
+      const theNewToken = await generateAcountValidationToken(req.body)
+
+      // update the acount to become a validated one
+      theAcount = await User.findOneAndUpdate({ email: req.body.email }, { acountValidationToken: theNewToken }, { new: true })
+
+      // send the new email
+      console.log('new validation email is sent successfully')
+
+      // hide email
+      const hidingEmail = await emailHider(`${req.body.email}`)
+
+      return res.status(201).json(`A new account email validation has been sent 📨 to the adresse : ${hidingEmail} !`)
     } catch (error) {
       console.log(error)
       return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })

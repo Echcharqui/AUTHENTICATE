@@ -1,5 +1,5 @@
 /// //////////////////// rate limiters ////////////////////////////////
-const { rateLimiter4on1 } = require('./rate_limiter/rate_limiter')
+const { rateLimiter4on1, rateLimiter1on1 } = require('./rate_limiter/rate_limiter')
 /// ///////////////////////////////////////////////////////////////////
 
 /// //////////////////// middlewares //////////////////////////////////
@@ -8,5 +8,6 @@ const { isTheAcountValidationTokenValid } = require('./token_verifier/acount_val
 
 module.exports = {
   rateLimiter4on1,
+  rateLimiter1on1,
   isTheAcountValidationTokenValid
 }
