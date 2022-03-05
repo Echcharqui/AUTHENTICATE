@@ -5,7 +5,13 @@ const bcrypt = require('bcryptjs')
 const { validationResult } = require('express-validator')
 
 /// /////////////// custom modules /////////////////////////
-const { generateAcountValidationToken, generateResetPasswordToken, emailHider } = require('../../custom_modules')
+const {
+  generateToken,
+  generateRefereshToken,
+  generateAcountValidationToken,
+  generateResetPasswordToken,
+  emailHider
+} = require('../../custom_modules')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// midlewares /////////////////////////
@@ -13,7 +19,7 @@ const { rateLimiter4on1, rateLimiter1on1, isTheAcountValidationTokenValid } = re
 /// ////////////////////////////////////////////////////
 
 /// /////////////// validators /////////////////////////
-const { signUpValidator, resendEmailValidator, forgetPassword } = require('../../validators')
+const { signInValidator, signUpValidator, resendEmailValidator, forgetPassword } = require('../../validators')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// DB models /////////////////////////
@@ -21,12 +27,84 @@ const { User, BlackListToken } = require('../../models')
 /// ////////////////////////////////////////////////////
 
 // sign in route
-router.get('/signIn', rateLimiter4on1, async (req, res) => {
-  return res.status(200).json({ message: 'welcom to the sign in !' })
+router.post('/sign_in', rateLimiter4on1, signInValidator(), async (req, res) => {
+  // check validation inputs
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() })
+  }
+
+  try {
+    // searching this user by email recived on the request body
+    let theUser = await User.findOne({ email: req.body.email })
+
+    // check if the user exist
+    if (!theUser) {
+      return res.status(400).json({ errors: { msg: 'The email or password are incorrect !' } })
+    }
+
+    // check the password
+    const checkPassword = await bcrypt.compare(req.body.password, theUser.password)
+    if (!checkPassword) {
+      return res.status(400).json({ errors: { msg: 'The email or password are incorrect !' } })
+    }
+
+    // check if account is validated
+    if (!theUser.acountValidated) {
+      return res.status(403).json(
+        {
+          errors: {
+            theCause: 'this account is not validated',
+            msg: 'This request requires a validated account which is not your case ! please validate your account first !'
+          }
+        }
+      )
+    }
+
+    // check if account is baned
+    if (theUser.acountIsBanned) {
+      return res.status(403).json(
+        {
+          errors: {
+            theCause: 'this account has been banned',
+            message: 'This account has been banned, you cannot access your account until the ban is removed',
+            until: theUser.acountBanedUntil
+          }
+        }
+      )
+    }
+
+    // the action of generate a refresh is only if it's the user first login or the user has deconected from all the machines last time
+    if (theUser.refreshToken.length === 0) {
+      // generate the refersh token
+      const refreshToken = await generateRefereshToken(theUser)
+      // record the refresh token on the DB
+      theUser = await User.findOneAndUpdate({ email: req.body.email }, { refreshToken: refreshToken }, { new: true })
+    }
+
+    // generate the access token
+    const theToken = await generateToken(theUser, 1)
+
+    // set the user object
+    theUser = {
+      isAuth: true,
+      email: theUser.email,
+      firstName: theUser.firstName,
+      lastName: theUser.lastName,
+      isNewUser: theUser.isNewUser,
+      token: theToken,
+      refreshToken: theUser.refreshToken
+    }
+
+    return res.status(200).json(theUser)
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
+  }
 })
 
 // sign up route
-router.post('/signUp', rateLimiter4on1, signUpValidator(), async (req, res) => {
+router.post('/sign_up', rateLimiter4on1, signUpValidator(), async (req, res) => {
   // check validation inputs
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -98,7 +176,7 @@ router.post('/signUp', rateLimiter4on1, signUpValidator(), async (req, res) => {
     return res.status(201).json('Thanks for signing up 🙏. check your email to complete your registration !')
   } catch (error) {
     console.log(error)
-    return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+    return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
   }
 })
 
@@ -109,7 +187,7 @@ router.post('/acount_validation', isTheAcountValidationTokenValid, async (req, r
 
   // if this acount dont exit
   if (!theAcount) {
-    return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+    return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
   }
 
   // check if the account not validated yet so start the acount validation process
@@ -126,11 +204,11 @@ router.post('/acount_validation', isTheAcountValidationTokenValid, async (req, r
       return res.status(201).json('Thanks for choosing us 🙏, your account has been validated successfully. you can login now 👍')
     } catch (error) {
       console.log(error)
-      return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+      return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
     }
   } else {
     // check if the account is already validated return a response with status 409 which mean that this request is no longer required
-    return res.status(409).json({ errors: { message: 'This account is already validated ! please try to loging now.' } })
+    return res.status(409).json({ errors: { msg: 'This account is already validated ! please try to loging now.' } })
   }
 })
 
@@ -180,11 +258,11 @@ router.post('/resend_account_validation_email', rateLimiter1on1, resendEmailVali
       return res.status(201).json(`A new account email validation has been sent 📨 to the email adresse : ${hidingEmail} !`)
     } catch (error) {
       console.log(error)
-      return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+      return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
     }
   } else {
     // check if the account is already validated return a response with status 409 which mean that this request is no longer required
-    return res.status(409).json({ errors: { message: 'This account is already validated ! please try to loging now.' } })
+    return res.status(409).json({ errors: { msg: 'This account is already validated ! please try to loging now.' } })
   }
 })
 
@@ -237,16 +315,16 @@ router.post('/forget_password', rateLimiter1on1, forgetPassword(), async (req, r
       return res.status(201).json(`A new reset password email has been sent 📨 to the email adresse : ${hidingEmail} !`)
     } catch (error) {
       console.log(error)
-      return res.status(500).json({ errors: { message: 'Something went wrong while processing on your request ! please try later ...' } })
+      return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
     }
   } else {
     // check if the account is already validated return a response with status 403 which mean that this request required a validated token
-    return res.status(403).json({ errors: { message: 'This request requires a validated account which is not your case ! please validate your account first !' } })
+    return res.status(403).json({ errors: { msg: 'This request requires a validated account which is not your case ! please validate your account first !' } })
   }
 })
 
 // log out route
-router.get('/logOut', async (req, res) => {
+router.get('/log_out', async (req, res) => {
   return res.status(200).json({ message: 'welcom to the log out !' })
 })
 
