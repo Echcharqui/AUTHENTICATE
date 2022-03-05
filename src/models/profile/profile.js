@@ -1,10 +1,15 @@
 const mongoose = require('mongoose')
 
 const profileSchema = mongoose.Schema({
+
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     require: true
+  },
+  avatar: {
+    type: String,
+    required: true
   },
   email: {
     type: String,
