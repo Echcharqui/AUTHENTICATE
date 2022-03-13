@@ -57,6 +57,8 @@ The environment variables required for the module to work properly are :
 4. **CLIENT_DOMAIN** : the domain name of your frontEnd client 
 5. **JWT_SECRET_ACOUNT_VAVALIDATION** : a secret key of your choice for the encryption of the token
 6. **JWT_SECRET_RESET_PASSWORD** : a secret key of your choice for the encryption of the token
+6. **JWT_SECRET_REFRESH_TOKEN** : a secret key of your choice for the encryption of the token
+6. **JWT_SECRET_TOKEN** : a secret key of your choice for the encryption of the token
 
 for an exemple the **.env** file need to be like 
 ```
@@ -69,3 +71,5 @@ JWT_SECRET_RESET_PASSWORD=
 JWT_SECRET_REFRESH_TOKEN=
 JWT_SECRET_TOKEN=
 ```
+
+

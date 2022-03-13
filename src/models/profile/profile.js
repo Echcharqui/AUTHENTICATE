@@ -9,7 +9,8 @@ const profileSchema = mongoose.Schema({
   },
   avatar: {
     type: String,
-    required: true
+    required: true,
+    default: '/static/images/avatars/default.webp'
   },
   email: {
     type: String,
@@ -31,6 +32,10 @@ const profileSchema = mongoose.Schema({
   bornDate: {
     type: Date,
     required: true
+  },
+  socketID: {
+    type: String,
+    default: ''
   },
   isOnline: {
     type: Boolean,

@@ -15,15 +15,21 @@ const {
 /// ////////////////////////////////////////////////////
 
 /// /////////////// midlewares /////////////////////////
-const { rateLimiter4on1, rateLimiter1on1, isTheAcountValidationTokenValid } = require('../../middlewares')
+const { rateLimiter4on1, rateLimiter1on1, isAuthenticatedAsSimpleUser, isTheAcountValidationTokenValid, isTheResetPasswordTokenValid } = require('../../middlewares')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// validators /////////////////////////
-const { signInValidator, signUpValidator, resendEmailValidator, forgetPassword } = require('../../validators')
+const {
+  signInValidator,
+  signUpValidator,
+  resendEmailValidator,
+  forgetPassword,
+  resetPasswordValidator
+} = require('../../validators')
 /// ////////////////////////////////////////////////////
 
 /// /////////////// DB models /////////////////////////
-const { User, BlackListToken } = require('../../models')
+const { User, Profile, BlackListToken } = require('../../models')
 /// ////////////////////////////////////////////////////
 
 // sign in route
@@ -40,6 +46,11 @@ router.post('/sign_in', rateLimiter4on1, signInValidator(), async (req, res) => 
 
     // check if the user exist
     if (!theUser) {
+      return res.status(400).json({ errors: { msg: 'The email or password are incorrect !' } })
+    }
+
+    // check if the user alredy had sent a request for reseting his password
+    if (theUser.resetPasswordToken.length > 0) {
       return res.status(400).json({ errors: { msg: 'The email or password are incorrect !' } })
     }
 
@@ -201,6 +212,15 @@ router.post('/acount_validation', isTheAcountValidationTokenValid, async (req, r
       // update the acount to become a validated one
       theAcount = await User.findOneAndUpdate({ email: req.user.email }, { acountValidated: true, acountValidationToken: '' }, { new: true })
 
+      await Profile.insertMany({
+        user: theAcount._id,
+        email: theAcount.email,
+        firstName: theAcount.firstName,
+        lastName: theAcount.lastName,
+        gender: theAcount.gender,
+        bornDate: theAcount.bornDate
+      })
+
       return res.status(201).json('Thanks for choosing us 🙏, your account has been validated successfully. you can login now 👍')
     } catch (error) {
       console.log(error)
@@ -323,9 +343,52 @@ router.post('/forget_password', rateLimiter1on1, forgetPassword(), async (req, r
   }
 })
 
-// log out route
-router.get('/log_out', async (req, res) => {
-  return res.status(200).json({ message: 'welcom to the log out !' })
+// resetPssword route
+router.post('/reset_password', isTheResetPasswordTokenValid, resetPasswordValidator(), async (req, res) => {
+  // check validation inputs
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() })
+  }
+
+  try {
+    // black list the refresh token
+    const authHeader = req.headers.authorization
+    const token = authHeader && authHeader.split(' ')[1]
+    await BlackListToken.insertMany([
+      { token: token }
+    ])
+
+    // encrypt the new password
+    const encryptedPassword = await bcrypt.hashSync(req.body.password, 12)
+
+    // changing the password and remove refreshToken && theResetPasswordToken on the DB record
+    await User.findOneAndUpdate({ email: req.user.email }, { password: encryptedPassword, refreshToken: '', resetPasswordToken: '' }, { new: true })
+
+    return res.status(201).json('Your password has been changed successfully, you can login now 👍')
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
+  }
+})
+
+// logOut route
+router.post('/log_out', isAuthenticatedAsSimpleUser, async (req, res) => {
+  try {
+    // black list the refresh token
+    const authHeader = req.headers.authorization
+    const token = authHeader && authHeader.split(' ')[1]
+    await BlackListToken.insertMany([
+      { token: token }
+    ])
+
+    return res.status(201).json({
+      isAuth: false
+    })
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ errors: { msg: 'Something went wrong while processing on your request ! please try later ...' } })
+  }
 })
 
 module.exports = router

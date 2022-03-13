@@ -1,8 +1,8 @@
 require('dotenv').config()
 const JWT = require('jsonwebtoken')
-const { BlackListToken } = require('../../models')
+const { User, BlackListToken } = require('../../models')
 
-const isAuthenticatedAsSimpleUser = (req, res, next) => {
+const isTheRefreshTokenValid = (req, res, next) => {
   // extract the token from the header authorization field
   const authHeader = req.headers.authorization
   const token = authHeader && authHeader.split(' ')[1]
@@ -12,9 +12,18 @@ const isAuthenticatedAsSimpleUser = (req, res, next) => {
     return res.status(400).json({ errors: { msg: 'An access token is required in the process on this request !' } })
   }
 
-  JWT.verify(token, process.env.JWT_SECRET_TOKEN, async (error, user) => {
+  JWT.verify(token, process.env.JWT_SECRET_REFRESH_TOKEN, async (error, user) => {
     // if the token is expired or invalid send back a response with status 401
     if (error) {
+      return res.status(401).json({ errors: { msg: 'The access token is invalid or expired !', error } })
+    }
+
+    // check the refresh tokn is the same on this user record
+    const theUser = await User.findById(user._id)
+    if (!theUser) {
+      return res.status(401).json({ errors: { msg: 'The access token is invalid or expired !', error } })
+    }
+    if (theUser.refreshToken !== token) {
       return res.status(401).json({ errors: { msg: 'The access token is invalid or expired !', error } })
     }
 
@@ -24,8 +33,8 @@ const isAuthenticatedAsSimpleUser = (req, res, next) => {
       return res.status(401).json({ errors: { msg: 'The access token is invalid or expired !', error } })
     }
 
-    // if the token is not an access token send back a response with status 401
-    if (user.for !== 'authentication as a simple user') {
+    // if the token is not an refresh token send back a response with status 401
+    if (user.for !== 'refreshing the token') {
       return res.status(401).json({ errors: { msg: 'The access token is invalid or expired !', error } })
     }
 
@@ -35,4 +44,4 @@ const isAuthenticatedAsSimpleUser = (req, res, next) => {
   })
 }
 
-module.exports = { isAuthenticatedAsSimpleUser }
+module.exports = { isTheRefreshTokenValid }

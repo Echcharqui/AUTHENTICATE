@@ -8,6 +8,7 @@ const cors = require('cors')
 /// ///////         importing routes           ////////////
 const {
   AuthRoute,
+  SecurityRoute,
   ProfileRoute
 } = require('./routes')
 /// ///////////////////////////////////////////////////////
@@ -48,6 +49,7 @@ app.use('/api/static', express.static(path.join(__dirname, '/public')))
 
 /// //////                routing            //////////////
 app.use('/api/auth/', AuthRoute)
+app.use('/api/security', SecurityRoute)
 app.use('/api/Profile/', ProfileRoute)
 /// ///////////////////////////////////////////////////////
 
